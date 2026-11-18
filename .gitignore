@@ -1,0 +1,12 @@
+# secrets: never commit
+private/.env
+private/initial-users.json
+.env
+*.local
+node_modules/
+.DS_Store
+.vercel
+private/CREDENTIALS.md
+
+# old Ideas version kept only on this computer
+_old_ideas_version/
