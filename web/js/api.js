@@ -10,10 +10,12 @@ export async function createApi(cfg) {
     throw Object.assign(new Error('This site isn’t connected to its database yet. Fill in web/config.js and redeploy.'), { setup: true });
   }
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/i.test(url)) throw Object.assign(new Error('SUPABASE_URL in config.js looks wrong. It should look like https://abcd1234.supabase.co'), { setup: true });
+  if (/^sb_secret_/.test(cfg.SUPABASE_ANON_KEY || '') || /service_role/.test(atobSafe(String(cfg.SUPABASE_ANON_KEY || '').split('.')[1]))) throw Object.assign(new Error('config.js contains the SECRET key. Replace it with the publishable key right away, and create a new secret key in Supabase.'), { setup: true });
   if (!cfg.SUPABASE_ANON_KEY || cfg.SUPABASE_ANON_KEY.length < 20) throw Object.assign(new Error('SUPABASE_ANON_KEY is missing in config.js.'), { setup: true });
   return supabaseApi(url.replace(/\/$/, ''), cfg.SUPABASE_ANON_KEY, cfg.LOGIN_DOMAIN || 'team.kaptainx.com');
 }
 
+const atobSafe = (s) => { try { return atob(String(s || '').replace(/-/g, '+').replace(/_/g, '/')); } catch { return ''; } };
 const loginEmail = (id, domain) => (id.includes('@') ? id.trim().toLowerCase() : `${id.trim().toLowerCase()}@${domain}`);
 const friendly = (e) => {
   const m = String(e?.message || e || '');

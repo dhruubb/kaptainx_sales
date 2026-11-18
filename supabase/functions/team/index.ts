@@ -1,7 +1,10 @@
 // KaptainX Sales HQ: team management (founders only).
 // Actions: create, reset_password, set_role, set_active.
-// Deploy:  npx supabase functions deploy team
-// Uses the project's built-in SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY.
+// Deploy:  npx supabase functions deploy team --no-verify-jwt
+//   (--no-verify-jwt is required: the built-in check doesn't understand the new key format.
+//    This function verifies the signed-in user itself and only lets active founders through.)
+// Uses the project's built-in keys: new SUPABASE_PUBLISHABLE_KEYS / SUPABASE_SECRET_KEYS,
+// or legacy SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY on older projects.
 // Optional secrets: LOGIN_DOMAIN (default team.kaptainx.com), ALLOWED_ORIGIN (your site URL).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -15,6 +18,13 @@ const cors = (origin: string | null) => ({
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Vary": "Origin",
 });
+
+// New-style keys arrive as a JSON object keyed by name, e.g. {"default":"sb_secret_…"}
+function envKey(name: string): string | undefined {
+  const raw = Deno.env.get(name);
+  if (!raw) return undefined;
+  try { const o = JSON.parse(raw); return o.default ?? Object.values(o)[0] as string; } catch { return raw; }
+}
 
 function tempPassword() {
   const A = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -32,8 +42,9 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anon = envKey("SUPABASE_PUBLISHABLE_KEYS") ?? Deno.env.get("SUPABASE_ANON_KEY");
+    const service = envKey("SUPABASE_SECRET_KEYS") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !anon || !service) return reply({ error: "Server keys missing" }, 500);
 
     // 1. Who is calling?
     const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");

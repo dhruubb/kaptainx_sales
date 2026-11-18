@@ -5,8 +5,8 @@
 //   node scripts/admin.mjs reset <username>   give someone a new temporary password
 //   node scripts/admin.mjs list               show the team
 //
-// Needs private/.env with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see private/.env.example).
-// The service-role key is a master key: keep it only in private/.env. Never put it in the website.
+// Needs private/.env with SUPABASE_URL and SUPABASE_SECRET_KEY (see private/.env.example).
+// The secret key is a master key: keep it only in private/.env. Never put it in the website.
 import { readFileSync, existsSync } from "node:fs";
 import { randomInt } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -21,12 +21,14 @@ if (existsSync(envFile)) {
   }
 }
 const URL_ = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const LOGIN_DOMAIN = process.env.LOGIN_DOMAIN || "team.kaptainx.com";
 const die = (m) => { console.error("✖ " + m); process.exit(1); };
-if (!/^https:\/\/.+/.test(URL_) || KEY.length < 20) die("Fill SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in private/.env first.");
+if (!/^https:\/\/.+/.test(URL_) || KEY.length < 20 || /paste|YOUR/i.test(KEY)) die("Fill SUPABASE_URL and SUPABASE_SECRET_KEY in private/.env first (see private/.env.example).");
+if (KEY.startsWith("sb_publishable_")) die("That's the publishable key. private/.env needs the SECRET key (starts with sb_secret_).");
 
-const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
+// New keys (sb_secret_…) go only in the apikey header; legacy JWT keys also go in Authorization.
+const H = KEY.startsWith("sb_") ? { apikey: KEY, "Content-Type": "application/json" } : { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 async function api(method, path, body, extra = {}) {
   const r = await fetch(URL_ + path, { method, headers: { ...H, ...extra }, body: body ? JSON.stringify(body) : undefined });
   const text = await r.text();

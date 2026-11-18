@@ -38,13 +38,14 @@ In a terminal, inside the `kaptainx-sales-hq` folder:
 ```bash
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF      # the ref is in your Supabase URL
-npx supabase functions deploy team
+npx supabase functions deploy team --no-verify-jwt
 ```
+`--no-verify-jwt` is required: Supabase's built-in check doesn't understand the new key format. The function checks the signed-in user itself and only lets active founders through.
 
 ### 3. Create the three accounts
 1. Copy `private/.env.example` to `private/.env`.
-2. Paste your **Project URL** and **service_role key** into `private/.env` (Supabase → Project Settings → API).
-   ⚠️ The service_role key is a master key. It only goes in `private/.env`, never in `web/` and never in git.
+2. Paste your **Project URL** and **secret key** into `private/.env`. Find them in Supabase → **Project Settings → API Keys**; the secret key starts with `sb_secret_`. Older projects can use the legacy `service_role` key instead.
+   ⚠️ The secret key is a master key. It only goes in `private/.env`, never in `web/` and never in git.
 3. Run:
    ```bash
    node scripts/admin.mjs setup
@@ -52,7 +53,7 @@ npx supabase functions deploy team
    This creates **dhruv**, **hardik** and **anjika** with the passwords in `private/CREDENTIALS.md`. Each person must choose their own password the first time they sign in.
 
 ### 4. Connect the website
-Edit `web/config.js` and paste the **Project URL** and the **anon / publishable key**. Not the service_role key.
+Edit `web/config.js` and paste the **Project URL** and the **publishable key** (`sb_publishable_…`, or the legacy `anon` key). Never the secret key; the app refuses to start if you paste it by mistake.
 
 ### 5. Deploy the website
 
